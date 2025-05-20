@@ -2,77 +2,82 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 
-
-public class kefel {
+public class Kefel {
     public static void main(String[] args) {
-        if (args.length < 0) {
-            System.out.println("Usage: java kefel <k>");
+        if (args.length < 1) {
             return;
         }
 
         int k = Integer.parseInt(args[0]);
-
         try {
             PrintWriter writer = new PrintWriter(new FileWriter("kefel.s"));
+
             writer.println(".section .text");
             writer.println(".globl kefel");
-            writer.println("kefe:");
+            writer.println("kefel:");
 
-            writer.println("    movq %rdi, %rax");
-
+            // נבדוק אם k הוא חזקת 2
             if ((k & (k - 1)) == 0) {
                 int shift = Integer.numberOfTrailingZeros(k);
-                writer.printf("    shlq $%d, %rax\n", shift);
+                writer.println("    movq %rdi, %rax");
+                writer.printf("    shlq $%d, %%rax\n", shift);
             } else {
-                boolean b = false;
-                for (int i = 63; i >= 0 && !b; i--) {
+                boolean optimized = false;
+
+                // חיבור של שתי חזקות 2
+                for (int i = 63; i >= 0 && !optimized; i--) {
                     for (int j = i - 1; j >= 0; j--) {
                         if ((1L << i) + (1L << j) == k) {
-                            writer.println("    movq %rdi, %rcx");
-                            writer.printf("    shlq $%d, %%rcx\n", i);
-                            writer.println("    addq %rcx, %rax");
+                            writer.println("    movq %rdi, %rax");
+                            writer.printf("    shlq $%d, %%rax\n", i);
                             writer.println("    movq %rdi, %rcx");
                             writer.printf("    shlq $%d, %%rcx\n", j);
                             writer.println("    addq %rcx, %rax");
-                            b = true;
+                            optimized = true;
                         }
                     }
                 }
 
-                if (!b) {
-                    for (int i = 63; i >= 0 && !b; i--) {
+                // חיסור של שתי חזקות 2
+                if (!optimized) {
+                    for (int i = 63; i >= 0 && !optimized; i--) {
                         for (int j = i - 1; j >= 0; j--) {
                             if ((1L << i) - (1L << j) == k) {
+                                writer.println("    movq %rdi, %rax");
+                                writer.printf("    shlq $%d, %%rax\n", i);
                                 writer.println("    movq %rdi, %rcx");
-                                writer.printf("    shlq $%d, %%rcx\n", i);
-                                writer.println("    movq %rdi, %rsi");
-                                writer.printf("    shlq $%d, %%rsi\n", j);
-                                writer.println("    subq %rsi, %rcx");
-                                writer.println("    movq %rcx, %rax");
-                                b = true;
+                                writer.printf("    shlq $%d, %%rcx\n", j);
+                                writer.println("    subq %rcx, %rax");
+                                optimized = true;
                             }
                         }
                     }
                 }
-                if (!b) {
-                    for (int i = 1; i < 64; i++) {
+
+                // פירוק כללי לפי ביטים דלוקים
+                if (!optimized) {
+                    boolean first = true;
+                    for (int i = 63; i >= 0; i--) {
                         if (((k >> i) & 1) != 0) {
-                            writer.println("    movq %rdi, %rcx");
-                            writer.printf("    shlq $%d, %%rcx\n", i);
-                            writer.println("    addq %rcx, %rax");
+                            if (first) {
+                                writer.println("    movq %rdi, %rax");
+                                if (i != 0)
+                                    writer.printf("    shlq $%d, %%rax\n", i);
+                                first = false;
+                            } else {
+                                writer.println("    movq %rdi, %rcx");
+                                writer.printf("    shlq $%d, %%rcx\n", i);
+                                writer.println("    addq %rcx, %rax");
+                            }
                         }
-                    }
-                    if ((k & 1) != 0) {
-                        writer.println("    addq %rdi, %rax");
                     }
                 }
             }
+
             writer.println("    ret");
             writer.close();
-            System.out.println("kefel.s created successfully for k = " + k);
-        }
-        catch (IOException e) {
-            System.out.println("Error writing to kefel.s: " + e.getMessage());
+        } catch (IOException e) {
+            // אין הדפסות שגיאה לפי דרישות המטלה
         }
     }
 }
